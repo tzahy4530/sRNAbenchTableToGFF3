@@ -15,4 +15,4 @@ this scripts using the prediction output of sRNAbench (novel.txt, novel451.txt) 
 
 * Example Run:
 
-  `python sRNAbenchTableToGFF3 -i novel.txt -a novel451.txt -o sRNAbench_results.gff3`
+  `python sRNAbenchTableToGFF3.py -i novel.txt -a novel451.txt -o sRNAbench_results.gff3`
