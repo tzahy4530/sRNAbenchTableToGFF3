@@ -12,6 +12,8 @@ this scripts using the prediction output of sRNAbench (novel.txt, novel451.txt) 
   `-a <path> : additional input file.`
   
   `-o <path> : output path.`
+  
+  `--create-fasta <path>: create fasta file from the gff3 table.'
 
 * Example Run:
 
