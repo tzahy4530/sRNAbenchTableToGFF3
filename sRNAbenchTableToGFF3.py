@@ -2,15 +2,29 @@
 
 import sys
 import pandas as pd
+ids_dic = {}
 
-
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-def run(input, output, additional=None):
+def handleGivenName(name, df, column):
     """
+    This Function handle the given name of miRNA,
+    name of miRNA used as a key, most be unique.
+    :param name: sRNAbench given name.
+    :param df: dataframe which including all the records.
+    :param column: column name.
+    :return: unique name.
+    """
+    if len(df[df[column] == name]) > 1:
+        if name not in ids_dic:
+            ids_dic[name] = 0
+        ids_dic[name] += 1
+        name = f'{name}_{ids_dic[name]}'
+
+    return name
+
+def run(input, output, additional=None, fasta_path=None):
+    """
+    This Function will create GFF3 file from the sRNAbench output.
+    :param fasta_path: a path to create fasta file from the gff3 table.
     :param additional: additonal sRNAbench output prediction file.
     :param input: sRNAbench output prediction files 'novel.txt', 'novel454.txt'
     :param output: output path of the GFF formatted file.
@@ -20,22 +34,37 @@ def run(input, output, additional=None):
     gff3_columns = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     gff3 = pd.DataFrame(columns=gff3_columns)
     table = pd.read_csv(input, sep='\t')
+    if fasta_path is not None:
+        fasta_file = ''
+        open(fasta_path, 'w').close()
+
 
     if additional:
         table_to_add = pd.read_csv(additional, sep='\t')
         table = table.append(table_to_add)
 
     for index, row in table.iterrows():
-        name = row['name']
+        name = handleGivenName(row['name'], table, 'name')
         seqId = row['seqName']
-        name5p = row['5pname']
+        name5p = handleGivenName(row['5pname'], table, '5pname')
         seq5p = row['5pseq']
-        name3p = row['3pname']
+        name3p = handleGivenName(row['3pname'], table, '3pname')
         seq3p = row['3pseq']
         strand = row['strand']
         hairpin = row['hairpinSeq']
         start = row['start']
         end = row['end']
+        
+        if fasta_path is not None:
+            if not pd.isnull(seq5p):
+                fasta_file += f'>{name5p}\n{seq5p}\n'
+            if not pd.isnull(seq3p):
+                fasta_file += f'>{name3p}\n{seq3p}\n'
+
+            if len(fasta_file) > 100000:
+                with open(fasta_path, 'a+') as f:
+                    f.write(fasta_file)
+                fasta_file = ''
 
         gff_row = [[seqId, '.', 'pre_miRNA', start, end, '.', strand, '.', f'ID={name}']]
 
@@ -80,14 +109,18 @@ def run(input, output, additional=None):
     with open(output, 'w') as file:
         file.write(version)
 
+    if fasta_path is not None:
+        with open(fasta_path, 'a+') as f:
+            f.write(fasta_file)
+
     gff3.to_csv(output, index=False, header=False, mode="a", sep='\t')
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     input = None
     output = None
     add = None
+    fasta_path = None
     args = []
     for i in range(1, len(sys.argv), 2):
         arg = sys.argv[i]
@@ -97,16 +130,21 @@ if __name__ == '__main__':
             output = sys.argv[i + 1]
         if arg == '-a':
             add = sys.argv[i + 1]
+        if arg == '--create-fasta':
+            fasta_path = sys.argv[i + 1]
         if arg == '--help' or arg == '-h':
             print(f'Manual:\n'
-                  f' -i : sRNAbench prediction output, like novel.txt/novel451.txt.\n'
-                  f' -o : output path.\n'
-                  f' -a : additional input file.\n')
+                  f' -i <path>: sRNAbench prediction output, like novel.txt/novel451.txt.\n'
+                  f' -a <path>: additional input file.\n'
+                  f' -o <path>: output path.\n'
+                  f' --create-fasta <path>: create fasta file from the gff3 table.\n'
+                  )
+
             sys.exit()
 
     if not input:
         raise ('Input path is required (-i <path>)')
     if not output:
         raise ('Output path is required (-o <path>)')
-    run(input, output, add)
+    run(input, output, add, fasta_path)
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
