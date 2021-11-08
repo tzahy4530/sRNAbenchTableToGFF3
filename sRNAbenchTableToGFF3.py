@@ -54,6 +54,19 @@ def run(input, output, additional=None, fasta_path=None):
         hairpin = row['hairpinSeq']
         start = row['start']
         end = row['end']
+
+        if row['5pRC'] >= row['3pRC']:
+            name5p += '-m'
+            name3p += '-s'
+        else:
+            name5p += '-s'
+            name3p += '-m'
+
+        seq5p_freq = len(table[(table['5pseq'] == seq5p) | (table['3pseq'] == seq5p)])
+        seq3p_freq = len(table[(table['5pseq'] == seq3p) | (table['3pseq'] == seq3p)])
+
+        name5p += f'-{seq5p_freq}'
+        name3p += f'-{seq3p_freq}'
         
         if fasta_path is not None:
             if not pd.isnull(seq5p):
