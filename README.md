@@ -13,6 +13,8 @@ this scripts using the prediction output of sRNAbench (novel.txt, novel451.txt) 
   
   `-o <path> : output path.`
   
+  `-seed <path> : classify the reads by seed file, should be separated by tab with columns [miRBase_name, seed], default: None.\n`
+  
   `--create-fasta <path>: create fasta file from the gff3 table.`
 
 * Example Run:
