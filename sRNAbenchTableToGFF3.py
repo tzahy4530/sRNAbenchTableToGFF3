@@ -21,9 +21,10 @@ def handleGivenName(name, df, column):
 
     return name
 
-def run(input, output, additional=None, fasta_path=None):
+def run(input, output, additional=None, fasta_path=None, seed_path=None):
     """
     This Function will create GFF3 file from the sRNAbench output.
+    :param seed_path: a path to the seed file.
     :param fasta_path: a path to create fasta file from the gff3 table.
     :param additional: additonal sRNAbench output prediction file.
     :param input: sRNAbench output prediction files 'novel.txt', 'novel454.txt'
@@ -34,6 +35,10 @@ def run(input, output, additional=None, fasta_path=None):
     gff3_columns = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     gff3 = pd.DataFrame(columns=gff3_columns)
     table = pd.read_csv(input, sep='\t')
+
+    if seed_path:
+        seed_file = pd.read_csv(seed_path, sep='\t')
+
     if fasta_path is not None:
         fasta_file = ''
         open(fasta_path, 'w').close()
@@ -56,17 +61,33 @@ def run(input, output, additional=None, fasta_path=None):
         end = row['end']
 
         if row['5pRC'] >= row['3pRC']:
-            name5p += '-m'
-            name3p += '-s'
+            name5p += '|m'
+            name3p += '|s'
         else:
-            name5p += '-s'
-            name3p += '-m'
+            name5p += '|s'
+            name3p += '|m'
 
         seq5p_freq = len(table[(table['5pseq'] == seq5p) | (table['3pseq'] == seq5p)])
         seq3p_freq = len(table[(table['5pseq'] == seq3p) | (table['3pseq'] == seq3p)])
 
-        name5p += f'-{seq5p_freq}'
-        name3p += f'-{seq3p_freq}'
+        name5p += f'|{seq5p_freq}'
+        name3p += f'|{seq3p_freq}'
+
+
+        if seed_path is not None:
+            if not pd.isnull(seq5p):
+                seq5p_seed = seq5p[1:8].upper().replace("T", "U")
+                try:
+                    name5p += '|' + seed_file[seed_file['seed'] == seq5p_seed]["miRBase_name"].iloc[0]
+                except:
+                    name5p += '|' + seq5p_seed
+
+            if not pd.isnull(seq3p):
+                seq3p_seed = seq3p[1:8].upper().replace("T", "U")
+                try:
+                    name3p += '|' + seed_file[seed_file['seed'] == seq3p_seed]["miRBase_name"].iloc[0]
+                except:
+                    name3p += '|' + seq3p_seed
         
         if fasta_path is not None:
             if not pd.isnull(seq5p):
@@ -134,22 +155,26 @@ if __name__ == '__main__':
     output = None
     add = None
     fasta_path = None
+    seed_path = None
     args = []
     for i in range(1, len(sys.argv), 2):
         arg = sys.argv[i]
         if arg == '-i':
             input = sys.argv[i + 1]
-        if arg == '-o':
+        elif arg == '-o':
             output = sys.argv[i + 1]
-        if arg == '-a':
+        elif arg == '-a':
             add = sys.argv[i + 1]
-        if arg == '--create-fasta':
+        elif arg == '-seed':
+            seed_path = sys.argv[i + 1]
+        elif arg == '--create-fasta':
             fasta_path = sys.argv[i + 1]
-        if arg == '--help' or arg == '-h':
+        elif arg == '--help' or arg == '-h':
             print(f'Manual:\n'
                   f' -i <path>: sRNAbench prediction output, like novel.txt/novel451.txt.\n'
                   f' -a <path>: additional input file.\n'
                   f' -o <path>: output path.\n'
+                  f' -seed <path> : classify the reads by seed file, should be separated by tab with columns.\n'
                   f' --create-fasta <path>: create fasta file from the gff3 table.\n'
                   )
 
@@ -159,5 +184,5 @@ if __name__ == '__main__':
         raise ('Input path is required (-i <path>)')
     if not output:
         raise ('Output path is required (-o <path>)')
-    run(input, output, add, fasta_path)
+    run(input, output, add, fasta_path, seed_path)
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
